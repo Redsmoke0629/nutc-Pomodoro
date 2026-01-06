@@ -32,26 +32,36 @@
 
             <div class="d-flex flex-column flex-grow-1 min-h-0 mb-4">
                 <p class="small text-secondary fw-bold mb-3 d-flex align-items-center flex-shrink-0">待辦事項</p>
-                <div class="input-group input-group-sm mb-3 flex-shrink-0">
-                    <input type="text" class="form-control bg-dark-subtle border-0 text-light" 
+                
+                <div class="d-flex gap-2 mb-4 flex-shrink-0">
+                    <input type="text" class="form-control custom-input" 
                            v-model="newTaskInput" @keyup.enter="addTask" placeholder="輸入任務...">
-                    <button class="btn btn-primary" @click="addTask"><i class="bi bi-plus-lg"></i></button>
+                    <button class="btn btn-add-task" @click="addTask">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
                 </div>
                 
                 <div class="task-list-scroll overflow-auto custom-scrollbar pe-2 flex-grow-1">
                     <div v-for="task in tasks" :key="task.id" 
-                         class="task-card d-flex align-items-center justify-content-between p-2 mb-2 rounded bg-white bg-opacity-5 border border-white border-opacity-10"
+                         class="task-item d-flex align-items-center justify-content-between"
                          :class="{ 'task-done': task.done }"
                          @click="toggleTask(task.id)">
-                        <div class="d-flex align-items-center overflow-hidden">
-                            <i class="bi me-2" :class="task.done ? 'bi-check-circle-fill text-success' : 'bi-circle text-secondary'"></i>
-                            <span class="small text-truncate">{{ task.text }}</span>
+                        
+                        <div class="d-flex align-items-center gap-3 overflow-hidden">
+                            <div class="custom-checkbox">
+                                <i class="bi bi-check-lg"></i>
+                            </div>
+                            <span class="task-text text-truncate">{{ task.text }}</span>
                         </div>
-                        <button class="btn btn-sm text-danger opacity-50 hover-100 p-0 border-0 ms-2" @click.stop="removeTask(task.id)">
-                            <i class="bi bi-x-circle"></i>
+
+                        <button class="btn-delete-task ms-2" @click.stop="removeTask(task.id)">
+                            <i class="bi bi-x-lg"></i>
                         </button>
                     </div>
-                    <div v-if="tasks.length === 0" class="text-center py-4 opacity-25 small italic">無任務</div>
+                    
+                    <div v-if="tasks.length === 0" class="text-center py-4 opacity-25 small italic">
+                        無待辦事項
+                    </div>
                 </div>
             </div>
 
