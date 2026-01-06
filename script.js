@@ -10,6 +10,7 @@ createApp({
         const sessionStartTime = ref(null);
         let targetEndTime = null;
 
+        // 讀取循環次數
         const savedCycle = localStorage.getItem('focus_cycle');
         const cycleCount = ref(savedCycle ? parseInt(savedCycle) : 1);
 
@@ -54,11 +55,11 @@ createApp({
             weeklyHistory.value[today] += minutes;
             localStorage.setItem('focus_history', JSON.stringify(weeklyHistory.value));
 
-            dailySessions.value.push({ time: timeLabel, duration: minutes });
+            dailySessions.value.push({ time: timeLabel, duration: parseFloat(minutes.toFixed(1)) });
             localStorage.setItem('today_sessions', JSON.stringify(dailySessions.value));
             
             sessionStartTime.value = null;
-            updateCharts('default');
+            updateCharts(); // 只有在記錄完成時才更新圖表，解決延遲
         };
 
         const clearHistory = () => {
@@ -71,28 +72,48 @@ createApp({
                 dailySessions.value = [];
                 cycleCount.value = 1;
                 
-                updateCharts('default');
+                updateCharts();
             }
         };
 
-        // --- 3. 任務 ---
+        // --- 3. 任務 (移除預設，移除完成度) ---
         const newTaskInput = ref('');
         const loadTasks = () => { const t = localStorage.getItem('focus_tasks'); return t ? JSON.parse(t) : []; };
         const tasks = ref(loadTasks());
+        
         const saveTasks = () => localStorage.setItem('focus_tasks', JSON.stringify(tasks.value));
+        
         const addTask = () => {
             if (newTaskInput.value.trim() === '') return;
-            tasks.value.push({ id: Date.now(), text: newTaskInput.value, done: false });
-            newTaskInput.value = ''; saveTasks();
+            tasks.value.push({ id: Date.now(), text: newTaskInput.value });
+            newTaskInput.value = ''; 
+            saveTasks();
         };
-        const removeTask = (id) => { tasks.value = tasks.value.filter(t => t.id !== id); saveTasks(); };
+        
+        const removeTask = (id) => { 
+            tasks.value = tasks.value.filter(t => t.id !== id); 
+            saveTasks(); 
+        };
 
-        // --- 4. 番茄鐘 ---
+        // --- 4. 番茄鐘 (SVG 動畫優化) ---
         const modeText = computed(() => {
-            if (currentMode.value === 'focus') return '🔥 深度專注';
-            if (currentMode.value === 'short-break') return '☕ 短暫休息';
-            return '🌴 長時間休息';
+            if (currentMode.value === 'focus') return '深度專注';
+            if (currentMode.value === 'short-break') return '短暫休息';
+            return '長時間休息';
         });
+        
+        const modeColor = computed(() => {
+             if (currentMode.value === 'focus') return '#bb86fc';
+             return '#03dac6';
+        });
+
+        const circumference = 2 * Math.PI * 120; // 半徑120
+        const progressOffset = computed(() => {
+             const total = currentMode.value === 'focus' ? TIMES.FOCUS : (currentMode.value === 'short-break' ? TIMES.SHORT_BREAK : TIMES.LONG_BREAK);
+             const ratio = timeLeft.value / total;
+             return circumference * (1 - ratio);
+        });
+
         const formatTime = computed(() => {
             const m = Math.floor(timeLeft.value / 60).toString().padStart(2, '0');
             const s = (timeLeft.value % 60).toString().padStart(2, '0');
@@ -103,11 +124,12 @@ createApp({
         
         const toggleTimer = () => {
             if (isRunning.value) {
+                // 暫停
                 clearInterval(timerInterval); 
                 isRunning.value = false; 
                 targetEndTime = null; 
-                updateCharts('none');
             } else {
+                // 開始
                 if (!sessionStartTime.value && currentMode.value === 'focus') {
                     const now = new Date();
                     sessionStartTime.value = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
@@ -116,18 +138,15 @@ createApp({
                 targetEndTime = Date.now() + (timeLeft.value * 1000);
                 isRunning.value = true;
 
-                if (currentMode.value === 'focus') {
-                     updateCharts('none');
-                }
-
+                // 移除這裡的 updateCharts 呼叫，這是造成延遲的主因
                 timerInterval = setInterval(() => {
                     const now = Date.now();
                     const remaining = Math.ceil((targetEndTime - now) / 1000);
                     if (remaining > 0) {
                         timeLeft.value = remaining;
-                        if (currentMode.value === 'focus') updateCharts('none');
                     } else {
-                        timeLeft.value = 0; handleTimerComplete();
+                        timeLeft.value = 0; 
+                        handleTimerComplete();
                     }
                 }, 1000);
             }
@@ -136,21 +155,20 @@ createApp({
         const handleTimerComplete = () => {
             clearInterval(timerInterval); isRunning.value = false; targetEndTime = null;
             
-            // [修正] 更換為大聲的鬧鐘音效 (Mixkit 免費資源)
             const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-            audio.volume = 1.0; // 設定為最大聲
+            audio.volume = 0.5; 
             audio.play().catch(e => console.log('Autoplay prevented', e));
 
             if (currentMode.value === 'focus') {
-                recordFocusSession(25);
+                recordFocusSession(25); // 紀錄時間
                 if (cycleCount.value < 4) {
-                    currentMode.value = 'short-break'; timeLeft.value = TIMES.SHORT_BREAK; alert('專注結束！休息 5 分鐘');
+                    currentMode.value = 'short-break'; timeLeft.value = TIMES.SHORT_BREAK; 
                 } else {
-                    currentMode.value = 'long-break'; timeLeft.value = TIMES.LONG_BREAK; alert('恭喜！休息 15 分鐘');
+                    currentMode.value = 'long-break'; timeLeft.value = TIMES.LONG_BREAK; 
                 }
             } else {
                 if (currentMode.value === 'long-break') cycleCount.value = 1; else cycleCount.value++;
-                currentMode.value = 'focus'; timeLeft.value = TIMES.FOCUS; sessionStartTime.value = null; alert('休息結束，開始新的一輪！');
+                currentMode.value = 'focus'; timeLeft.value = TIMES.FOCUS; sessionStartTime.value = null;
             }
         };
 
@@ -160,14 +178,13 @@ createApp({
                 const elapsedSeconds = TIMES.FOCUS - timeLeft.value;
                 const elapsedMinutes = elapsedSeconds / 60;
                 
-                if (elapsedMinutes > 0) recordFocusSession(elapsedMinutes); 
+                if (elapsedMinutes > 0.5) recordFocusSession(elapsedMinutes); // 少於半分鐘不紀錄
                 else sessionStartTime.value = null;
                 
                 currentMode.value = 'short-break'; timeLeft.value = TIMES.SHORT_BREAK;
             } else {
                 currentMode.value = 'focus'; timeLeft.value = TIMES.FOCUS; sessionStartTime.value = null;
             }
-            updateCharts();
         };
 
         watch(cycleCount, (n) => localStorage.setItem('focus_cycle', n.toString()));
@@ -195,43 +212,49 @@ createApp({
         };
 
         const initCharts = () => {
-            const purple = '#bb86fc'; const secondary = '#03dac6'; const gridColor = '#333'; const textColor = '#a0a0a0';
+            const purple = '#bb86fc'; const secondary = '#03dac6'; const gridColor = 'rgba(255,255,255,0.1)'; const textColor = '#888';
             
             const ctx1 = document.getElementById('weeklyChart').getContext('2d');
             weeklyChartInstance = new Chart(ctx1, {
                 type: 'bar',
                 data: { labels: getLast7Days(), datasets: [{ label: '總分鐘', data: getWeeklyData(), backgroundColor: purple, borderRadius: 4 }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor } }, x: { grid: { display: false }, ticks: { color: textColor } } }, plugins: { legend: { display: false } } }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { 
+                        y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor } }, 
+                        x: { grid: { display: false }, ticks: { color: textColor } } 
+                    }, 
+                    plugins: { legend: { display: false } } 
+                }
             });
 
             const ctx2 = document.getElementById('dailyChart').getContext('2d');
             dailyChartInstance = new Chart(ctx2, {
                 type: 'bar',
-                data: { labels: dailySessions.value.map(s => s.time), datasets: [{ label: '專注時長', data: dailySessions.value.map(s => s.duration), backgroundColor: secondary, borderRadius: 4, barThickness: 20 }] },
-                options: { responsive: true, maintainAspectRatio: false, animation: { duration: 0 }, scales: { y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor, stepSize: 5 }, suggestedMax: 30 }, x: { grid: { display: false }, ticks: { color: textColor } } }, plugins: { legend: { display: false } } }
+                data: { labels: dailySessions.value.map(s => s.time), datasets: [{ label: '專注時長', data: dailySessions.value.map(s => s.duration), backgroundColor: secondary, borderRadius: 4, barThickness: 'flex', maxBarThickness: 30 }] },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    scales: { 
+                        y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor, stepSize: 5 }, suggestedMax: 25 }, 
+                        x: { grid: { display: false }, ticks: { color: textColor } } 
+                    }, 
+                    plugins: { legend: { display: false } } 
+                }
             });
         };
 
-        const updateCharts = (mode = 'default') => {
+        const updateCharts = () => {
             if (weeklyChartInstance) {
                 weeklyChartInstance.data.labels = getLast7Days();
                 weeklyChartInstance.data.datasets[0].data = getWeeklyData();
-                weeklyChartInstance.update(mode);
+                weeklyChartInstance.update();
             }
             if (dailyChartInstance) {
-                const labels = dailySessions.value.map(s => s.time);
-                const data = dailySessions.value.map(s => s.duration);
-                if (isRunning.value && currentMode.value === 'focus') {
-                    const elapsedSeconds = TIMES.FOCUS - timeLeft.value;
-                    const elapsedMinutes = elapsedSeconds / 60; 
-                    if (elapsedMinutes > 0) {
-                        labels.push((sessionStartTime.value || '...') + ' (進行中)');
-                        data.push(elapsedMinutes);
-                    }
-                }
-                dailyChartInstance.data.labels = labels;
-                dailyChartInstance.data.datasets[0].data = data;
-                dailyChartInstance.update(mode);
+                dailyChartInstance.data.labels = dailySessions.value.map(s => s.time);
+                dailyChartInstance.data.datasets[0].data = dailySessions.value.map(s => s.duration);
+                dailyChartInstance.update();
             }
         };
 
@@ -240,18 +263,21 @@ createApp({
 
         onMounted(() => {
             ws = new WebSocket('wss://echo.websocket.org');
-            ws.onopen = () => { isWsConnected.value = true; wsMessage.value = '已連線'; setInterval(() => { if(ws.readyState===1) ws.send(Date.now()) }, 2000); };
+            ws.onopen = () => { isWsConnected.value = true; wsMessage.value = '已連線'; setInterval(() => { if(ws.readyState===1) ws.send(Date.now()) }, 5000); }; // 改為5秒ping一次，節省資源
             ws.onmessage = (e) => { const t = parseInt(e.data); if(!isNaN(t)) latency.value = Date.now() - t; };
+            ws.onerror = () => { wsMessage.value = '離線模式'; }; 
             
             updateClock(); clockInterval = setInterval(updateClock, 1000);
-            initCharts(); setTimeout(() => updateCharts(), 100);
+            
+            setTimeout(() => { initCharts(); }, 100);
         });
 
         onUnmounted(() => { if(timerInterval) clearInterval(timerInterval); if(clockInterval) clearInterval(clockInterval); if(ws) ws.close(); });
 
         return {
             timeLeft, formatTime, isRunning, currentMode, modeText, cycleCount, toggleTimer, skipPhase,
-            tasks, newTaskInput, addTask, removeTask, saveTasks,
+            modeColor, progressOffset, circumference, // SVG 相關
+            tasks, newTaskInput, addTask, removeTask, 
             wsMessage, latency, isWsConnected, currentTime, currentDate,
             clearHistory
         };
