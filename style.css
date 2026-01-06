@@ -1,127 +1,132 @@
-/* --- 全域變數 & 主題 --- */
 :root {
-    --bg-app: #09090b; /* 更深的黑色 */
-    --bg-sidebar: #121214;
-    --primary: #bb86fc;
-    --primary-glow: rgba(187, 134, 252, 0.5);
-    --secondary: #03dac6;
-    --surface: #1e1e22;
-    --border: rgba(255, 255, 255, 0.08);
+    --primary-purple: #bb86fc;
+    --secondary-teal: #03dac6;
+    --bg-dark: #09090b;
+    --sidebar-dark: #111113;
 }
 
 body {
-    font-family: 'Noto Sans TC', sans-serif;
-    background-color: var(--bg-app);
-    color: #e0e0e0;
+    background-color: var(--bg-dark);
+    font-family: 'Microsoft JhengHei', 'Inter', system-ui, sans-serif;
+    letter-spacing: 0.02em; 
 }
 
-/* 桌面版隱藏捲軸 */
-@media (min-width: 992px) {
-    .overflow-hidden-desktop { overflow: hidden; }
-}
+.min-h-0 { min-height: 0; }
+.bg-sidebar { background-color: var(--sidebar-dark); }
 
-/* --- 背景與裝飾 --- */
-.main-bg { background-color: var(--bg-app); }
-
-.bg-glow-purple, .bg-glow-blue {
-    position: absolute;
-    width: 600px; height: 600px;
-    border-radius: 50%;
-    filter: blur(100px);
-    opacity: 0.08;
-    z-index: 0;
-    pointer-events: none;
-}
-.bg-glow-purple { background: var(--primary); top: -100px; right: -100px; }
-.bg-glow-blue { background: var(--secondary); bottom: -100px; left: -100px; }
-
-/* --- 玻璃擬態卡片 --- */
-.glass-card {
-    background: rgba(30, 30, 34, 0.6);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--border) !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-}
-
-.bg-sidebar { background-color: var(--bg-sidebar); }
-
-/* --- Logo & 文字 --- */
 .logo-box {
     width: 36px; height: 36px;
-    background: linear-gradient(135deg, var(--primary), #7c4dff);
-    color: #fff;
+    background: linear-gradient(135deg, var(--primary-purple), #7c4dff);
+    color: #000;
     display: flex; align-items: center; justify-content: center;
-    font-weight: bold;
-    font-size: 1.2rem;
+    font-weight: 800; font-size: 1.1rem;
+    box-shadow: 0 0 15px rgba(187, 134, 252, 0.4);
 }
-.shadow-glow { box-shadow: 0 0 15px var(--primary-glow); }
-.text-gradient {
-    background: linear-gradient(to right, #fff, #bbb);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
-.ls-1 { letter-spacing: 1px; }
 
-/* --- 待辦清單 --- */
-.task-item { transition: background 0.2s; }
-.task-item:hover { background: rgba(255, 255, 255, 0.03) !important; }
-.btn-icon:hover { color: #cf6679 !important; }
+.form-control {
+    color: #fff !important;
+    background-color: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+}
+.form-control:focus { box-shadow: 0 0 0 2px rgba(187, 134, 252, 0.3); }
+.form-control::placeholder { color: rgba(255,255,255,0.3); }
 
-/* 捲軸美化 */
-.custom-scrollbar::-webkit-scrollbar { width: 4px; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+/* --- 任務列表 --- */
+.task-card { cursor: pointer; transition: opacity 0.2s; }
+.task-done span { text-decoration: line-through; color: rgb(0, 0, 0); }
 
-/* --- 計時器圓環 SVG --- */
-.timer-ring-container {
+.cycle-dot {
+    width: 8px; height: 8px;
+    background-color: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    transition: all 0.3s;
+}
+.cycle-dot.active {
+    background-color: var(--secondary-teal);
+    box-shadow: 0 0 8px var(--secondary-teal);
+}
+
+/* --- 計時器樣式 (RWD 修正版) --- */
+.timer-display-container {
     position: relative;
-    width: 260px; height: 260px;
-    display: flex; align-items: center; justify-content: center;
-}
-.progress-ring__circle {
-    transition: stroke-dashoffset 0.35s;
-    transform: rotate(-90deg);
-    transform-origin: 50% 50%;
-}
-.timer-number {
-    position: absolute;
-    font-size: 4rem; font-weight: 700;
-    font-family: 'JetBrains Mono', monospace;
-    text-shadow: 0 0 20px rgba(0,0,0,0.5);
+    /* 1. 設定容器查詢類型，讓子元素知道它的尺寸 */
+    container-type: size; 
+    
+    width: 32vh; height: 32vh;
+    max-width: 300px; max-height: 300px;
+    min-width: 200px; min-height: 200px;
+    margin: 0 auto;
 }
 
-/* 循環藥丸 */
-.cycle-pill {
-    width: 24px; height: 6px;
-    background: #333;
-    border-radius: 4px;
-    transition: 0.3s;
-}
-.cycle-pill.active {
-    background: var(--secondary);
-    box-shadow: 0 0 8px rgba(3, 218, 198, 0.4);
+/* 2. 字體大小跟隨容器寬度 (24cqw = 容器寬度的24%) */
+/* 這樣無論怎麼縮放，字永遠在圈圈內 */
+.timer-number-responsive {
+    font-size: 24cqw; 
+    line-height: 1;
+    font-weight: 700;
+    font-family: monospace;
+    color: #fff;
 }
 
-/* --- 按鈕 --- */
-.btn-primary {
-    background: var(--primary);
-    border: none;
-    color: #000;
-}
-.btn-primary:hover {
-    background: #a370db;
-    color: #000;
-}
-.shadow-glow-btn { box-shadow: 0 0 20px var(--primary-glow); }
-.transition-transform:active { transform: scale(0.95); }
+.timer-svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+.timer-bg { fill: none; stroke: rgba(255,255,255,0.05); stroke-width: 6; }
 
-/* --- Chart 修復 --- */
-.chart-container-fix {
-    position: absolute;
-    top: 10px; left: 10px; right: 10px; bottom: 10px;
+/* 靜態微光圈 */
+.timer-static-glow {
+    fill: none; 
+    stroke-width: 6; 
+    stroke-linecap: round;
+    stroke-dasharray: 753; 
+    stroke-dashoffset: 0; 
+    filter: drop-shadow(0 0 8px var(--primary-purple));
+    opacity: 0.8;
 }
 
-/* 狀態燈 */
-.status-dot { width: 6px; height: 6px; background: #444; border-radius: 50%; display: inline-block; }
-.status-dot.online { background: var(--secondary); box-shadow: 0 0 8px var(--secondary); }
+.timer-content {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%); width: 100%;
+    display: flex; flex-direction: column; align-items: center;
+}
+
+.chart-container-wrapper {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0; padding: 12px;
+}
+canvas { width: 100% !important; height: 100% !important; }
+
+/* --- 進度條 (增加動畫流暢度) --- */
+.progress-bar-container {
+    height: 12px;
+    background-color: rgba(255,255,255,0.1);
+    border-radius: 6px;
+    overflow: hidden;
+}
+.custom-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--secondary-teal), #00a896);
+    box-shadow: 0 0 10px rgba(3, 218, 198, 0.5);
+    /* 3. 使用 ease-linear 讓秒數增加時看起來是順滑流動的 */
+    transition: width 1s linear; 
+}
+
+.glow-sphere-1 {
+    position: absolute; top: -10%; right: -5%; width: 50vw; height: 50vw;
+    background: radial-gradient(circle, var(--primary-purple) 0%, transparent 60%);
+    opacity: 0.08; pointer-events: none; z-index: 0;
+}
+.glow-sphere-2 {
+    position: absolute; bottom: -10%; left: -5%; width: 40vw; height: 40vw;
+    background: radial-gradient(circle, var(--secondary-teal) 0%, transparent 60%);
+    opacity: 0.06; pointer-events: none; z-index: 0;
+}
+
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.hover-white:hover { color: #fff !important; }

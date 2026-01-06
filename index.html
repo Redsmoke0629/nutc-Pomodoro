@@ -4,165 +4,160 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Focus Flow | 專注戰情室</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="style.css">
-    
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-black text-light overflow-hidden-desktop">
+<body class="bg-black text-light overflow-hidden">
 
-<div id="app" class="container-fluid h-100 p-0 fade-in">
+<div id="app" class="container-fluid vh-100 p-0">
     <div class="row g-0 h-100">
         
-        <aside class="col-lg-3 col-xl-2 d-flex flex-column bg-sidebar border-end border-dark-subtle p-3 h-100 position-relative z-2 shadow-lg">
-            
-            <div class="d-flex align-items-center gap-3 mb-4 px-2 py-2">
-                <div class="logo-box rounded-3 shadow-glow">流</div>
-                <div>
-                    <h1 class="h6 m-0 fw-bold tracking-wide text-white">Focus Flow</h1>
-                    <small class="text-secondary" style="font-size: 0.75rem;">專注戰情室</small>
+        <aside class="col-lg-3 col-xxl-2 bg-sidebar border-end border-white border-opacity-10 d-flex flex-column p-4 z-2 shadow-lg h-100">
+            <div class="d-flex align-items-center gap-3 mb-5 flex-shrink-0">
+                <div class="logo-box rounded-2 shadow-glow">流</div>
+                <div class="lh-sm">
+                    <h1 class="h6 m-0 fw-bold text-uppercase tracking-wider">專注心流</h1>
+                    <span class="badge bg-primary-subtle text-primary p-1 px-2" style="font-size: 0.6rem;">Focus Flow</span>
                 </div>
             </div>
             
-            <div class="card glass-card mb-3 text-center border-0">
-                <div class="card-body py-3">
-                    <div class="clock-time font-monospace display-6 fw-bold text-gradient">{{ currentTime }}</div>
-                    <div class="small text-secondary fw-medium">{{ currentDate }}</div>
+            <div class="card glass-card border-0 mb-4 flex-shrink-0">
+                <div class="card-body p-3 text-center">
+                    <div class="h3 mb-0 fw-bold font-monospace text-gradient">{{ currentTime }}</div>
+                    <div class="small text-secondary mt-1">{{ currentDate }}</div>
+                    <div class="badge bg-dark border border-white border-opacity-10 mt-2 text-secondary" style="font-size: 0.7rem;">本地時間</div>
                 </div>
             </div>
 
-            <div class="card glass-card flex-grow-1 mb-3 d-flex flex-column overflow-hidden border-0">
-                <div class="card-header bg-transparent border-bottom border-secondary border-opacity-10 py-3">
-                    <div class="d-flex align-items-center gap-2 text-secondary">
-                        <i class="bi bi-list-task"></i>
-                        <span class="small fw-bold ls-1">待辦清單</span>
-                    </div>
+            <div class="d-flex flex-column flex-grow-1 min-h-0 mb-4">
+                <p class="small text-secondary fw-bold mb-3 d-flex align-items-center flex-shrink-0">待辦事項</p>
+                <div class="input-group input-group-sm mb-3 flex-shrink-0">
+                    <input type="text" class="form-control bg-dark-subtle border-0 text-light" 
+                           v-model="newTaskInput" @keyup.enter="addTask" placeholder="輸入任務...">
+                    <button class="btn btn-primary" @click="addTask"><i class="bi bi-plus-lg"></i></button>
                 </div>
-                <div class="card-body d-flex flex-column p-0 overflow-hidden">
-                    <div class="p-2 border-bottom border-secondary border-opacity-10">
-                        <div class="input-group input-group-sm">
-                            <input type="text" class="form-control bg-dark text-light border-secondary border-opacity-25" 
-                                   v-model="newTaskInput" @keyup.enter="addTask" placeholder="輸入任務...">
-                            <button class="btn btn-primary" type="button" @click="addTask">
-                                <i class="bi bi-plus-lg"></i>
-                            </button>
+                
+                <div class="task-list-scroll overflow-auto custom-scrollbar pe-2 flex-grow-1">
+                    <div v-for="task in tasks" :key="task.id" 
+                         class="task-card d-flex align-items-center justify-content-between p-2 mb-2 rounded bg-white bg-opacity-5 border border-white border-opacity-10"
+                         :class="{ 'task-done': task.done }"
+                         @click="toggleTask(task.id)">
+                        <div class="d-flex align-items-center overflow-hidden">
+                            <i class="bi me-2" :class="task.done ? 'bi-check-circle-fill text-success' : 'bi-circle text-secondary'"></i>
+                            <span class="small text-truncate">{{ task.text }}</span>
                         </div>
+                        <button class="btn btn-sm text-danger opacity-50 hover-100 p-0 border-0 ms-2" @click.stop="removeTask(task.id)">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
                     </div>
-                    
-                    <ul class="list-group list-group-flush overflow-auto custom-scrollbar flex-grow-1 p-2">
-                        <li v-for="task in tasks" :key="task.id" class="list-group-item bg-transparent border-0 d-flex align-items-center justify-content-between px-2 py-2 rounded mb-1 task-item">
-                            <span class="text-truncate small text-light">{{ task.text }}</span>
-                            <button class="btn btn-sm btn-icon text-secondary hover-danger p-0" @click="removeTask(task.id)">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </li>
-                        <li v-if="tasks.length === 0" class="text-center text-secondary small mt-4 fst-italic opacity-50">
-                            無待辦事項
-                        </li>
-                    </ul>
+                    <div v-if="tasks.length === 0" class="text-center py-4 opacity-25 small italic">無任務</div>
                 </div>
             </div>
 
-            <button class="btn btn-outline-danger w-100 mb-3 btn-sm border-opacity-25" @click="clearHistory">
-                <i class="bi bi-trash me-1"></i> 清除統計數據
-            </button>
-
-            <div class="card glass-card mt-auto border-0">
-                <div class="card-body p-2 font-monospace">
-                    <div class="d-flex align-items-center gap-2 mb-1">
-                        <span class="status-dot" :class="{ online: isWsConnected }"></span>
-                        <span class="small text-secondary">{{ wsMessage }}</span>
+            <div class="mt-auto flex-shrink-0">
+                <button class="btn btn-sm btn-outline-danger w-100 opacity-75 mb-4" @click="clearHistory">
+                    <i class="bi bi-trash3 me-2"></i>清除所有數據
+                </button>
+                <div class="p-3 rounded bg-dark bg-opacity-50 border border-white border-opacity-10">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="status-dot" :class="{ 'bg-success': isWsConnected, 'bg-danger': !isWsConnected }"></span>
+                            <span class="small text-secondary fw-bold">{{ wsMessage }}</span>
+                        </div>
+                        <span class="small fw-bold font-monospace text-primary">{{ latency }}ms</span>
                     </div>
-                    <div class="d-flex align-items-baseline gap-1">
-                        <span class="h5 m-0 fw-bold text-light">{{ latency }}</span>
-                        <span class="small text-muted">ms</span>
+                    <div class="text-secondary" style="font-size: 0.65rem; line-height: 1.4;">
+                        <div class="opacity-75">Server: echo.websocket.org</div>
+                        <div class="opacity-50">Basis: RTT (Round-Trip)</div>
                     </div>
                 </div>
             </div>
         </aside>
 
-        <main class="col-lg-9 col-xl-10 d-flex flex-column p-4 h-100 overflow-hidden position-relative main-bg">
-            
-            <div class="bg-glow-purple"></div>
-            <div class="bg-glow-blue"></div>
+        <main class="col-lg-9 col-xxl-10 position-relative d-flex flex-column h-100 p-4 overflow-hidden">
+            <div class="glow-sphere-1"></div>
+            <div class="glow-sphere-2"></div>
 
-            <section class="d-flex justify-content-center mb-4 flex-shrink-0 z-1">
-                <div class="timer-wrapper text-center">
-                    
-                    <span class="badge rounded-pill border px-3 py-2 mb-4 bg-black bg-opacity-50 backdrop-blur" 
-                          :class="currentMode === 'focus' ? 'border-primary text-primary-light' : 'border-info text-info-light'">
-                        <i class="bi" :class="currentMode === 'focus' ? 'bi-lightning-fill' : 'bi-cup-hot-fill'"></i>
-                        {{ modeText }}
-                    </span>
+            <section class="d-flex flex-column justify-content-center align-items-center flex-grow-1 min-h-0">
+                <div class="text-end w-100 pe-5 mb-2 position-absolute top-0 end-0 pt-4 d-none d-lg-block">
+                     <span class="small text-secondary">循環進度 ({{ cycleCount }}/4)</span>
+                     <div class="d-inline-flex gap-1 ms-2">
+                        <div v-for="n in 4" :key="n" class="cycle-dot" :class="{ 'active': n <= cycleCount }"></div>
+                     </div>
+                </div>
 
-                    <div class="position-relative d-flex justify-content-center align-items-center mb-4">
-                        <div class="timer-ring-container">
-                            <svg class="progress-ring" width="260" height="260">
-                                <circle class="progress-ring__circle-bg" stroke="rgba(255,255,255,0.05)" stroke-width="8" fill="transparent" r="120" cx="130" cy="130"/>
-                                <circle class="progress-ring__circle" :stroke="modeColor" stroke-width="8" fill="transparent" r="120" cx="130" cy="130"
-                                        :style="{ strokeDashoffset: progressOffset, strokeDasharray: circumference }"/>
-                            </svg>
-                            <div class="timer-number text-white tracking-tight">{{ formatTime }}</div>
+                <div class="timer-wrapper text-center position-relative">
+                    <div class="timer-display-container mb-4">
+                        <svg class="timer-svg" viewBox="0 0 260 260">
+                            <circle class="timer-bg" cx="130" cy="130" r="120"></circle>
+                            <circle class="timer-static-glow" cx="130" cy="130" r="120" :style="{ stroke: modeColor }"></circle>
+                        </svg>
+                        <div class="timer-content">
+                            <span class="badge rounded-pill mb-3 px-3 py-1" 
+                                  :style="{ backgroundColor: 'rgba(255,255,255,0.1)', color: modeColor, border: '1px solid ' + modeColor }">
+                                {{ modeText }}
+                            </span>
+                            <div class="timer-number-responsive">{{ formatTime }}</div>
                         </div>
                     </div>
 
-                    <div class="d-flex justify-content-center gap-3">
-                        <button class="btn btn-lg btn-primary fw-bold px-5 rounded-pill shadow-glow-btn transition-transform" @click="toggleTimer">
-                            <i class="bi" :class="isRunning ? 'bi-pause-fill' : 'bi-play-fill'"></i>
+                    <div class="d-flex justify-content-center gap-4 align-items-center">
+                        <button class="btn btn-primary btn-lg px-5 py-3 rounded-3 fw-bold shadow-lg" 
+                                @click="toggleTimer"
+                                :style="{ backgroundColor: modeColor, borderColor: modeColor, color: '#000' }">
                             {{ isRunning ? '暫停' : '開始' }}
                         </button>
-                        <button class="btn btn-lg btn-outline-secondary px-4 rounded-pill transition-transform" @click="skipPhase">
-                            <i class="bi bi-skip-forward-fill"></i>
-                        </button>
-                    </div>
-
-                    <div class="mt-4 d-flex align-items-center justify-content-center gap-2">
-                        <small class="text-secondary me-2">循環進度</small>
-                        <div v-for="n in 4" :key="n" class="cycle-pill" :class="{ active: n <= cycleCount }"></div>
+                        <button class="btn btn-link text-secondary text-decoration-none hover-white" @click="skipPhase">跳過</button>
                     </div>
                 </div>
             </section>
 
-            <div class="row g-4 flex-fill min-h-0 z-1">
-                <div class="col-md-6 d-flex flex-column min-h-0">
-                    <div class="card glass-card h-100 border-0">
-                        <div class="card-header bg-transparent border-0 pt-3 px-3">
-                            <h3 class="h6 m-0 text-secondary text-uppercase ls-1 fw-bold">
-                                <i class="bi bi-bar-chart-fill me-2"></i>過去 7 天專注時長 (分鐘)
-                            </h3>
+            <section class="row g-4 mt-2" style="height: 35vh; min-height: 220px;">
+                <div class="col-md-6 h-100">
+                    <div class="card glass-card border-0 h-100 d-flex flex-column">
+                        <div class="card-header bg-transparent border-0 pt-4 pb-0 flex-shrink-0">
+                            <h6 class="small fw-bold text-secondary mb-0">過去 7 天專注時長 (小時)</h6>
                         </div>
-                        <div class="card-body position-relative p-3">
-                            <div class="chart-container-fix">
+                        <div class="card-body flex-grow-1 position-relative w-100">
+                            <div class="chart-container-wrapper">
                                 <canvas id="weeklyChart"></canvas>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="col-md-6 d-flex flex-column min-h-0">
-                    <div class="card glass-card h-100 border-0">
-                        <div class="card-header bg-transparent border-0 pt-3 px-3">
-                            <h3 class="h6 m-0 text-secondary text-uppercase ls-1 fw-bold">
-                                <i class="bi bi-pie-chart-fill me-2"></i>今日專注分佈
-                            </h3>
-                        </div>
-                        <div class="card-body position-relative p-3">
-                            <div class="chart-container-fix">
-                                <canvas id="dailyChart"></canvas>
+                <div class="col-md-6 h-100">
+                    <div class="card glass-card border-0 h-100 d-flex flex-column justify-content-center">
+                        <div class="card-body d-flex flex-column justify-content-center px-5">
+                            <div class="d-flex justify-content-between align-items-end mb-3">
+                                <div>
+                                    <h6 class="small fw-bold text-secondary mb-1">今日專注累積</h6>
+                                    <div class="display-6 fw-bold text-white font-monospace">{{ displayTotalMinutes }} <span class="fs-6 text-secondary">min</span></div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="small text-secondary mb-1">目標: 4 小時</div>
+                                    <div class="h5 fw-bold text-primary mb-0">{{ (todayTotalMinutes / 60).toFixed(1) }} hr</div>
+                                </div>
+                            </div>
+                            
+                            <div class="progress-bar-container">
+                                <div class="custom-progress-bar" :style="{ width: Math.min((todayTotalMinutes / 240) * 100, 100) + '%' }"></div>
+                            </div>
+                            
+                            <div class="mt-3 text-center small text-secondary opacity-75">
+                                {{ todayTotalMinutes >= 240 ? '🎉 已達成今日目標！' : '保持專注，繼續加油！' }}
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-
+            </section>
         </main>
     </div>
 </div>
 
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
