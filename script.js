@@ -61,6 +61,20 @@ createApp({
             updateCharts('default');
         };
 
+        const clearHistory = () => {
+            if (confirm('確定要清除所有統計數據嗎？\n(這將刪除所有圖表紀錄)')) {
+                localStorage.removeItem('focus_history');
+                localStorage.removeItem('today_sessions');
+                localStorage.removeItem('focus_cycle');
+                
+                weeklyHistory.value = {};
+                dailySessions.value = [];
+                cycleCount.value = 1;
+                
+                updateCharts('default');
+            }
+        };
+
         // --- 3. 任務 ---
         const newTaskInput = ref('');
         const loadTasks = () => { const t = localStorage.getItem('focus_tasks'); return t ? JSON.parse(t) : []; };
@@ -86,16 +100,26 @@ createApp({
         });
 
         let timerInterval = null;
+        
         const toggleTimer = () => {
             if (isRunning.value) {
-                clearInterval(timerInterval); isRunning.value = false; targetEndTime = null; updateCharts('none');
+                clearInterval(timerInterval); 
+                isRunning.value = false; 
+                targetEndTime = null; 
+                updateCharts('none');
             } else {
                 if (!sessionStartTime.value && currentMode.value === 'focus') {
                     const now = new Date();
                     sessionStartTime.value = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
                 }
+                
                 targetEndTime = Date.now() + (timeLeft.value * 1000);
                 isRunning.value = true;
+
+                if (currentMode.value === 'focus') {
+                     updateCharts('none');
+                }
+
                 timerInterval = setInterval(() => {
                     const now = Date.now();
                     const remaining = Math.ceil((targetEndTime - now) / 1000);
@@ -111,27 +135,34 @@ createApp({
 
         const handleTimerComplete = () => {
             clearInterval(timerInterval); isRunning.value = false; targetEndTime = null;
-            const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-            audio.play().catch(e => console.log('Autoplay prevented'));
+            
+            // [修正] 更換為大聲的鬧鐘音效 (Mixkit 免費資源)
+            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+            audio.volume = 1.0; // 設定為最大聲
+            audio.play().catch(e => console.log('Autoplay prevented', e));
 
             if (currentMode.value === 'focus') {
                 recordFocusSession(25);
                 if (cycleCount.value < 4) {
-                    currentMode.value = 'short-break'; timeLeft.value = TIMES.SHORT_BREAK; alert('休息 5 分鐘');
+                    currentMode.value = 'short-break'; timeLeft.value = TIMES.SHORT_BREAK; alert('專注結束！休息 5 分鐘');
                 } else {
-                    currentMode.value = 'long-break'; timeLeft.value = TIMES.LONG_BREAK; alert('休息 15 分鐘');
+                    currentMode.value = 'long-break'; timeLeft.value = TIMES.LONG_BREAK; alert('恭喜！休息 15 分鐘');
                 }
             } else {
                 if (currentMode.value === 'long-break') cycleCount.value = 1; else cycleCount.value++;
-                currentMode.value = 'focus'; timeLeft.value = TIMES.FOCUS; sessionStartTime.value = null; alert('開始新一輪');
+                currentMode.value = 'focus'; timeLeft.value = TIMES.FOCUS; sessionStartTime.value = null; alert('休息結束，開始新的一輪！');
             }
         };
 
         const skipPhase = () => {
             clearInterval(timerInterval); isRunning.value = false; targetEndTime = null;
             if (currentMode.value === 'focus') {
-                const elapsed = parseFloat(((TIMES.FOCUS - timeLeft.value) / 60).toFixed(1));
-                if (elapsed > 0) recordFocusSession(elapsed); else sessionStartTime.value = null;
+                const elapsedSeconds = TIMES.FOCUS - timeLeft.value;
+                const elapsedMinutes = elapsedSeconds / 60;
+                
+                if (elapsedMinutes > 0) recordFocusSession(elapsedMinutes); 
+                else sessionStartTime.value = null;
+                
                 currentMode.value = 'short-break'; timeLeft.value = TIMES.SHORT_BREAK;
             } else {
                 currentMode.value = 'focus'; timeLeft.value = TIMES.FOCUS; sessionStartTime.value = null;
@@ -166,7 +197,6 @@ createApp({
         const initCharts = () => {
             const purple = '#bb86fc'; const secondary = '#03dac6'; const gridColor = '#333'; const textColor = '#a0a0a0';
             
-            // Weekly
             const ctx1 = document.getElementById('weeklyChart').getContext('2d');
             weeklyChartInstance = new Chart(ctx1, {
                 type: 'bar',
@@ -174,7 +204,6 @@ createApp({
                 options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor } }, x: { grid: { display: false }, ticks: { color: textColor } } }, plugins: { legend: { display: false } } }
             });
 
-            // Daily
             const ctx2 = document.getElementById('dailyChart').getContext('2d');
             dailyChartInstance = new Chart(ctx2, {
                 type: 'bar',
@@ -193,10 +222,11 @@ createApp({
                 const labels = dailySessions.value.map(s => s.time);
                 const data = dailySessions.value.map(s => s.duration);
                 if (isRunning.value && currentMode.value === 'focus') {
-                    const elapsed = parseFloat(((TIMES.FOCUS - timeLeft.value) / 60).toFixed(1));
-                    if (elapsed > 0) {
+                    const elapsedSeconds = TIMES.FOCUS - timeLeft.value;
+                    const elapsedMinutes = elapsedSeconds / 60; 
+                    if (elapsedMinutes > 0) {
                         labels.push((sessionStartTime.value || '...') + ' (進行中)');
-                        data.push(elapsed);
+                        data.push(elapsedMinutes);
                     }
                 }
                 dailyChartInstance.data.labels = labels;
@@ -222,7 +252,8 @@ createApp({
         return {
             timeLeft, formatTime, isRunning, currentMode, modeText, cycleCount, toggleTimer, skipPhase,
             tasks, newTaskInput, addTask, removeTask, saveTasks,
-            wsMessage, latency, isWsConnected, currentTime, currentDate
+            wsMessage, latency, isWsConnected, currentTime, currentDate,
+            clearHistory
         };
     }
 }).mount('#app');

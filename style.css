@@ -5,6 +5,7 @@
     --bg-sidebar: #181818;
     --primary: #bb86fc;
     --secondary: #03dac6;
+    --danger: #cf6679; /* 紅色 */
     --text-main: #e0e0e0;
     --text-dim: #a0a0a0;
     --border: #333333;
@@ -18,12 +19,16 @@ body {
     background-color: #000;
     color: var(--text-main);
     margin: 0;
-    height: 100vh;
-    width: 100vw;
-    overflow: hidden;
+    
+    /* [修正縮放問題] 允許內容超出時出現捲軸，並設定最小高度 */
+    min-height: 100vh;
+    overflow-y: auto; 
+    overflow-x: hidden;
+    
     display: flex;
     justify-content: center;
     align-items: center;
+    padding: 20px 0; /* 給上下留點空間，避免貼邊 */
 }
 
 /* --- 2. 主容器 --- */
@@ -31,7 +36,11 @@ body {
     background-color: var(--bg-app);
     width: 95%;
     max-width: 1200px;
-    height: 90vh;
+    
+    /* [修正縮放問題] 設定最小高度，防止內容擠壓 */
+    min-height: 800px; 
+    height: 90vh; 
+    
     border-radius: 20px;
     display: flex;
     border: 1px solid var(--border);
@@ -49,6 +58,7 @@ body {
     gap: 15px; 
     border-right: 1px solid var(--border); 
     flex-shrink: 0;
+    overflow-y: auto; /* 側邊欄內容太多時也可以捲動 */
 }
 
 /* --- 右側：主內容區 --- */
@@ -81,10 +91,10 @@ h3 { margin: 0 0 10px 0; font-size: 0.85rem; color: var(--text-dim); letter-spac
 
 /* 2. 待辦事項清單 */
 .schedule-card {
-    flex: 1;
+    flex: 1; 
     display: flex;
     flex-direction: column;
-    min-height: 0;
+    min-height: 200px; /* 給清單一個最小高度 */
     overflow: hidden;
 }
 
@@ -112,6 +122,22 @@ h3 { margin: 0 0 10px 0; font-size: 0.85rem; color: var(--text-dim); letter-spac
 .delete-btn:hover { color: #cf6679; }
 .empty-state { text-align: center; color: #555; font-style: italic; margin-top: 20px; font-size: 0.75rem; }
 
+/* [新增] 危險按鈕 (清除紀錄) */
+.btn-danger {
+    background: transparent;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: 0.2s;
+    flex-shrink: 0;
+}
+.btn-danger:hover {
+    background: rgba(207, 102, 121, 0.1);
+}
+
 /* 3. 網路監測 */
 .network-card { margin-top: auto; flex-shrink: 0; }
 .status-header { display: flex; align-items: center; gap: 8px; margin-bottom: 5px;}
@@ -120,7 +146,6 @@ h3 { margin: 0 0 10px 0; font-size: 0.85rem; color: var(--text-dim); letter-spac
 
 /* --- 右側主內容 --- */
 
-/* 計時器區塊 (修正版：加大圓圈與字體適配) */
 .timer-section { 
     flex: 0 0 45%; 
     background: var(--bg-surface); 
@@ -135,41 +160,11 @@ h3 { margin: 0 0 10px 0; font-size: 0.85rem; color: var(--text-dim); letter-spac
 }
 .timer-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
 
-/* [修改點] 加大容器尺寸 */
-.timer-ring-container { 
-    position: relative; 
-    width: 220px;   /* 原本 160px -> 220px */
-    height: 220px;  /* 原本 160px -> 220px */
-    margin: 15px 0; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-}
-
-.glow-ring { 
-    position: absolute; 
-    width: 100%; 
-    height: 100%; 
-    border-radius: 50%; 
-    border: 5px solid #2d2d2d; /* 稍微加粗邊框 */
-    transition: 0.5s; 
-}
+.timer-ring-container { position: relative; width: 220px; height: 220px; margin: 15px 0; display: flex; align-items: center; justify-content: center; }
+.glow-ring { position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 5px solid #2d2d2d; transition: 0.5s; }
 .glow-ring.active.focus { border-color: var(--primary); box-shadow: 0 0 30px var(--primary); }
 .glow-ring.active.short-break { border-color: var(--secondary); box-shadow: 0 0 30px var(--secondary); }
-
-/* [修改點] 確保數字在圓圈正中間且不會跑出去 */
-.timer-number { 
-    font-size: 3.5rem; /* 字體大小 */
-    font-weight: 700; 
-    font-family: 'JetBrains Mono'; 
-    z-index: 2;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%); /* 絕對置中 */
-    width: 100%;
-    text-align: center;
-}
+.timer-number { font-size: 3.5rem; font-weight: 700; font-family: 'JetBrains Mono'; z-index: 2; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; text-align: center; }
 
 .cycle-status { display: flex; gap: 5px; margin-bottom: 5px; align-items: center; }
 .cycle-label { font-size: 0.8rem; color: var(--text-dim); }
@@ -185,7 +180,6 @@ h3 { margin: 0 0 10px 0; font-size: 0.85rem; color: var(--text-dim); letter-spac
 .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
 .btn-ghost:hover { border-color: var(--text-main); color: var(--text-main); }
 
-/* 下半部圖表 */
 .bottom-row {
     flex: 1; 
     display: grid;
@@ -194,20 +188,12 @@ h3 { margin: 0 0 10px 0; font-size: 0.85rem; color: var(--text-dim); letter-spac
     min-height: 0;
 }
 
-.chart-card {
-    background: var(--bg-surface);
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-}
+.chart-card { background: var(--bg-surface); border-radius: 12px; border: 1px solid var(--border); padding: 15px; display: flex; flex-direction: column; }
 .chart-wrapper { flex: 1; position: relative; min-height: 0; }
 
-/* RWD */
 @media (max-width: 1024px) {
     body { height: auto; overflow: auto; display: block; }
-    .app-container { width: 100%; height: auto; flex-direction: column; border: none; border-radius: 0; }
+    .app-container { width: 100%; height: auto; flex-direction: column; border: none; border-radius: 0; min-height: 0; }
     .sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; padding: 15px; height: auto; }
     .sidebar .card { flex: 1; min-width: 150px; }
     .schedule-card { min-width: 100% !important; height: 300px; order: 3; }

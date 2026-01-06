@@ -46,6 +46,10 @@
             </ul>
         </div>
 
+        <button class="btn-danger" @click="clearHistory">
+            🗑️ 清除所有統計數據
+        </button>
+
         <div class="card network-card">
             <div class="status-header">
                 <span class="status-dot" :class="{ online: isWsConnected }"></span>
