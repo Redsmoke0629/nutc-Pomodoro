@@ -1,4 +1,4 @@
-const { createApp, ref, computed, onMounted, onUnmounted, watch, nextTick } = Vue;
+const { createApp, ref, computed, onMounted, onUnmounted, watch } = Vue;
 
 // --- 模組 1: 時鐘邏輯 ---
 function useClock() {
@@ -24,20 +24,19 @@ function useClock() {
     return { currentTime, currentDate };
 }
 
-// --- 模組 2: 資料持久化與統計 ---
+// --- 模組 2: 資料持久化 (歷史紀錄) ---
 function useDataPersistence() {
     const getTodayDateStr = () => {
         const d = new Date();
         return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
     };
 
-    // 讀取每週紀錄
+    // 讀取紀錄 (改為同步讀取，避免閃爍)
     const loadWeeklyHistory = () => {
         try { return JSON.parse(localStorage.getItem('focus_history') || '{}'); } catch (e) { return {}; }
     };
     const weeklyHistory = ref(loadWeeklyHistory());
 
-    // 讀取今日紀錄
     const loadDailySessions = () => {
         try {
             const s = localStorage.getItem('today_sessions');
@@ -52,25 +51,22 @@ function useDataPersistence() {
     };
     const dailySessions = ref(loadDailySessions());
 
-    // 儲存紀錄
     const saveRecord = (minutes, sessionStartTimeStr) => {
         if (minutes <= 0.1) return;
         const today = getTodayDateStr();
         const timeLabel = sessionStartTimeStr || new Date().toTimeString().slice(0, 5);
 
-        // Update Weekly
         if (!weeklyHistory.value[today]) weeklyHistory.value[today] = 0;
         weeklyHistory.value[today] += minutes;
         localStorage.setItem('focus_history', JSON.stringify(weeklyHistory.value));
 
-        // Update Daily
         dailySessions.value.push({ time: timeLabel, duration: parseFloat(minutes.toFixed(1)) });
         localStorage.setItem('today_sessions', JSON.stringify(dailySessions.value));
         localStorage.setItem('last_record_date', today);
     };
 
     const clearAllData = () => {
-        if (confirm('確定要清除所有統計數據嗎？\n(這將刪除所有圖表紀錄)')) {
+        if (confirm('確定要清除所有統計數據嗎？\n(這將刪除所有圖表紀錄與任務)')) {
             localStorage.clear();
             location.reload();
         }
@@ -79,15 +75,16 @@ function useDataPersistence() {
     return { weeklyHistory, dailySessions, saveRecord, clearAllData };
 }
 
-// --- 模組 3: 任務管理 ---
+// --- 模組 3: 任務管理 (修正：同步載入防止資料遺失) ---
 function useTasks() {
     const newTaskInput = ref('');
-    const tasks = ref([]);
-
+    
+    // 修正：直接在初始化時讀取，確保重整後馬上看到
     const loadTasks = () => {
-        try { tasks.value = JSON.parse(localStorage.getItem('focus_tasks') || '[]'); } 
-        catch (e) { tasks.value = []; }
+        try { return JSON.parse(localStorage.getItem('focus_tasks') || '[]'); } 
+        catch (e) { return []; }
     };
+    const tasks = ref(loadTasks());
 
     const saveTasks = () => localStorage.setItem('focus_tasks', JSON.stringify(tasks.value));
 
@@ -111,23 +108,45 @@ function useTasks() {
         saveTasks();
     };
 
-    onMounted(loadTasks);
-
     return { tasks, newTaskInput, addTask, toggleTask, removeTask };
 }
 
-// --- 模組 4: 番茄鐘計時器 ---
+// --- 模組 4: 番茄鐘計時器 (修正：狀態持久化) ---
 function useTimer(onComplete) {
     const TIMES = { FOCUS: 25 * 60, SHORT_BREAK: 5 * 60, LONG_BREAK: 15 * 60 };
-    const timeLeft = ref(TIMES.FOCUS);
-    const isRunning = ref(false);
-    const currentMode = ref('focus');
-    const sessionStartTime = ref(null);
     
-    // 循環計數
+    // 從 localStorage 讀取上次狀態，如果沒有則用預設值
+    const getSavedState = (key, defaultVal) => {
+        const val = localStorage.getItem(key);
+        return val ? JSON.parse(val) : defaultVal;
+    };
+
+    const timeLeft = ref(getSavedState('timer_timeLeft', TIMES.FOCUS));
+    const isRunning = ref(false); // 預設先暫停，稍後在 onMounted 檢查是否要自動繼續
+    const currentMode = ref(localStorage.getItem('timer_mode') || 'focus');
+    const sessionStartTime = ref(localStorage.getItem('timer_startTime') || null);
     const cycleCount = ref(parseInt(localStorage.getItem('focus_cycle') || '1'));
+
     let timerInterval = null;
     let targetEndTime = null;
+
+    // 儲存計時器狀態到 localStorage
+    const saveTimerState = () => {
+        localStorage.setItem('timer_timeLeft', timeLeft.value);
+        localStorage.setItem('timer_mode', currentMode.value);
+        localStorage.setItem('focus_cycle', cycleCount.value);
+        if (sessionStartTime.value) localStorage.setItem('timer_startTime', sessionStartTime.value);
+        else localStorage.removeItem('timer_startTime');
+        
+        // 如果正在跑，還要存目標時間，這樣回來時可以算出過了多久
+        if (isRunning.value && targetEndTime) {
+            localStorage.setItem('timer_targetEndTime', targetEndTime);
+            localStorage.setItem('timer_isRunning', 'true');
+        } else {
+            localStorage.removeItem('timer_targetEndTime');
+            localStorage.setItem('timer_isRunning', 'false');
+        }
+    };
 
     const formatTime = computed(() => {
         const m = Math.floor(timeLeft.value / 60).toString().padStart(2, '0');
@@ -143,18 +162,29 @@ function useTimer(onComplete) {
 
     const modeColor = computed(() => currentMode.value === 'focus' ? '#bb86fc' : '#03dac6');
 
-    const startTimer = () => {
+    const startTimer = (resume = false) => {
         if (!sessionStartTime.value && currentMode.value === 'focus') {
             const now = new Date();
             sessionStartTime.value = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
         }
-        targetEndTime = Date.now() + (timeLeft.value * 1000);
-        isRunning.value = true;
         
+        // 如果是恢復執行 (Resume)，使用上次存的目標時間；否則建立新的目標時間
+        if (!resume || !targetEndTime) {
+             targetEndTime = Date.now() + (timeLeft.value * 1000);
+        }
+
+        isRunning.value = true;
+        saveTimerState(); // 儲存狀態
+
+        if (timerInterval) clearInterval(timerInterval);
         timerInterval = setInterval(() => {
-            const remaining = Math.ceil((targetEndTime - Date.now()) / 1000);
+            const now = Date.now();
+            const remaining = Math.ceil((targetEndTime - now) / 1000);
+            
             if (remaining > 0) {
                 timeLeft.value = remaining;
+                // 每秒稍微存一下，防止當機，但主要靠 start/pause 存
+                if (remaining % 5 === 0) saveTimerState(); 
             } else {
                 timeLeft.value = 0;
                 handleComplete();
@@ -166,27 +196,27 @@ function useTimer(onComplete) {
         clearInterval(timerInterval);
         isRunning.value = false;
         targetEndTime = null;
+        saveTimerState(); // 儲存暫停狀態
     };
 
     const toggleTimer = () => isRunning.value ? pauseTimer() : startTimer();
 
     const handleComplete = () => {
         pauseTimer();
+        // 清除狀態
+        localStorage.removeItem('timer_targetEndTime');
+        localStorage.removeItem('timer_isRunning');
+
         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-        audio.volume = 1.0; 
-        audio.play().catch(() => {});
+        audio.volume = 1.0; audio.play().catch(() => {});
 
         if (currentMode.value === 'focus') {
-            // 觸發完成回調，傳出專注時間與開始時間
             onComplete(TIMES.FOCUS / 60, sessionStartTime.value);
             
-            // 切換模式
             if (cycleCount.value < 4) {
-                currentMode.value = 'short-break';
-                timeLeft.value = TIMES.SHORT_BREAK;
+                currentMode.value = 'short-break'; timeLeft.value = TIMES.SHORT_BREAK;
             } else {
-                currentMode.value = 'long-break';
-                timeLeft.value = TIMES.LONG_BREAK;
+                currentMode.value = 'long-break'; timeLeft.value = TIMES.LONG_BREAK;
             }
             alert('專注結束！休息一下。');
         } else {
@@ -194,24 +224,48 @@ function useTimer(onComplete) {
             currentMode.value = 'focus';
             timeLeft.value = TIMES.FOCUS;
             sessionStartTime.value = null;
-            localStorage.setItem('focus_cycle', cycleCount.value.toString());
             alert('休息結束，開始新的一輪！');
         }
+        saveTimerState(); // 存下新模式
     };
 
     const skipPhase = () => {
         pauseTimer();
         if (currentMode.value === 'focus') {
             const elapsed = (TIMES.FOCUS - timeLeft.value) / 60;
-            onComplete(elapsed, sessionStartTime.value); // 記錄已過時間
-            currentMode.value = 'short-break';
-            timeLeft.value = TIMES.SHORT_BREAK;
+            onComplete(elapsed, sessionStartTime.value);
+            currentMode.value = 'short-break'; timeLeft.value = TIMES.SHORT_BREAK;
         } else {
-            currentMode.value = 'focus';
-            timeLeft.value = TIMES.FOCUS;
-            sessionStartTime.value = null;
+            currentMode.value = 'focus'; timeLeft.value = TIMES.FOCUS; sessionStartTime.value = null;
         }
+        saveTimerState();
     };
+
+    // --- 關鍵修復：網頁載入時恢復狀態 ---
+    onMounted(() => {
+        const savedIsRunning = localStorage.getItem('timer_isRunning') === 'true';
+        const savedTargetEnd = localStorage.getItem('timer_targetEndTime');
+
+        if (savedIsRunning && savedTargetEnd) {
+            const now = Date.now();
+            const remaining = Math.ceil((parseInt(savedTargetEnd) - now) / 1000);
+            
+            if (remaining > 0) {
+                // 還有時間，繼續跑
+                timeLeft.value = remaining;
+                targetEndTime = parseInt(savedTargetEnd);
+                startTimer(true); // true 代表是恢復執行
+            } else {
+                // 關閉期間時間已經到了
+                timeLeft.value = 0;
+                handleComplete();
+            }
+        }
+    });
+
+    onUnmounted(() => {
+        if (timerInterval) clearInterval(timerInterval);
+    });
 
     return { 
         timeLeft, formatTime, isRunning, currentMode, modeText, modeColor, cycleCount, 
@@ -226,8 +280,7 @@ function useCharts(weeklyHistory) {
     const getLast7Days = () => {
         const days = [];
         for (let i = 6; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
+            const d = new Date(); d.setDate(d.getDate() - i);
             days.push(`${d.getMonth() + 1}/${d.getDate()}`);
         }
         return days;
@@ -236,8 +289,7 @@ function useCharts(weeklyHistory) {
     const getWeeklyData = () => {
         const data = [];
         for (let i = 6; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
+            const d = new Date(); d.setDate(d.getDate() - i);
             const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
             data.push(weeklyHistory.value[key] || 0);
         }
@@ -267,11 +319,7 @@ function useCharts(weeklyHistory) {
                     y: {
                         beginAtZero: true,
                         grid: { color: 'rgba(255,255,255,0.05)' },
-                        ticks: {
-                            color: '#888',
-                            stepSize: 60,
-                            callback: (value) => (value / 60) + 'h'
-                        }
+                        ticks: { color: '#888', stepSize: 60, callback: (v) => (v / 60) + 'h' }
                     },
                     x: { grid: { display: false }, ticks: { color: '#888' } }
                 },
@@ -284,7 +332,7 @@ function useCharts(weeklyHistory) {
 }
 
 // --- 模組 6: WebSocket 網路監控 ---
-function useNetworkMonitor(onDisconnect) {
+function useNetworkMonitor() {
     const wsMessage = ref('連線初始化...');
     const latency = ref(0);
     const isWsConnected = ref(false);
@@ -298,7 +346,7 @@ function useNetworkMonitor(onDisconnect) {
                 isWsConnected.value = true;
                 wsMessage.value = '已連線';
                 pingInterval = setInterval(() => {
-                    if (ws.readyState === WebSocket.OPEN) ws.send(Date.now());
+                    if (ws && ws.readyState === WebSocket.OPEN) ws.send(Date.now());
                 }, 5000);
             };
             ws.onmessage = (e) => {
@@ -308,13 +356,12 @@ function useNetworkMonitor(onDisconnect) {
             ws.onclose = () => {
                 isWsConnected.value = false;
                 wsMessage.value = '已離線';
-                if (typeof onDisconnect === 'function') onDisconnect();
                 setTimeout(initWebSocket, 5000);
             };
             ws.onerror = () => {
                 isWsConnected.value = false;
                 wsMessage.value = '連線錯誤';
-                ws.close();
+                if(ws) ws.close();
             };
         } catch (e) {
             isWsConnected.value = false;
@@ -322,42 +369,35 @@ function useNetworkMonitor(onDisconnect) {
         }
     };
 
+    onMounted(() => initWebSocket());
     onUnmounted(() => {
         if (pingInterval) clearInterval(pingInterval);
         if (ws) ws.close();
     });
 
-    return { wsMessage, latency, isWsConnected, initWebSocket };
+    return { wsMessage, latency, isWsConnected };
 }
 
 // --- 主應用組裝 ---
 createApp({
     setup() {
-        // 1. 初始化各個模組
         const { currentTime, currentDate } = useClock();
         const { weeklyHistory, dailySessions, saveRecord, clearAllData } = useDataPersistence();
         const { tasks, newTaskInput, addTask, toggleTask, removeTask } = useTasks();
         const { renderCharts } = useCharts(weeklyHistory);
 
-        // 2. 定義計時器完成時的回調 (連接 Timer 與 Data)
         const onTimerComplete = (minutes, startTime) => {
             saveRecord(minutes, startTime);
-            renderCharts(); // 更新圖表
+            renderCharts();
         };
 
         const { 
             timeLeft, formatTime, isRunning, currentMode, modeText, 
-            modeColor, cycleCount, toggleTimer, skipPhase, pauseTimer, TIMES 
+            modeColor, cycleCount, toggleTimer, skipPhase, TIMES 
         } = useTimer(onTimerComplete);
 
-        // 3. 定義網路斷線時的行為 (連接 WebSocket 與 Timer)
-        const onNetworkDisconnect = () => {
-            // 如果要實現「斷線即專注」或「斷線暫停」，可在此處操作
-            // 例如：目前保留原樣，僅顯示狀態
-        };
-        const { wsMessage, latency, isWsConnected, initWebSocket } = useNetworkMonitor(onNetworkDisconnect);
+        const { wsMessage, latency, isWsConnected } = useNetworkMonitor();
 
-        // 4. 計算今日總進度 (結合 Data 與 Timer 狀態)
         const todayTotalMinutes = computed(() => {
             let total = dailySessions.value.reduce((sum, s) => sum + s.duration, 0);
             if (isRunning.value && currentMode.value === 'focus') {
@@ -369,22 +409,15 @@ createApp({
         });
         const displayTotalMinutes = computed(() => Math.floor(todayTotalMinutes.value));
 
-        // 5. 生命週期掛載
         onMounted(() => {
-            initWebSocket();
             setTimeout(renderCharts, 300);
         });
 
         return {
-            // Clock
             currentTime, currentDate,
-            // Data
             clearHistory: clearAllData, todayTotalMinutes, displayTotalMinutes,
-            // Tasks
             tasks, newTaskInput, addTask, toggleTask, removeTask,
-            // Timer
             timeLeft, formatTime, isRunning, currentMode, modeText, modeColor, cycleCount, toggleTimer, skipPhase,
-            // WS
             wsMessage, latency, isWsConnected
         };
     }
