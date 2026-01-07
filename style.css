@@ -1,3 +1,6 @@
+/* =========================================
+   1. 變數與基礎設定 (Variables & Base)
+   ========================================= */
 :root {
     --primary-purple: #bb86fc;
     --secondary-teal: #03dac6;
@@ -12,8 +15,18 @@ body {
     letter-spacing: 0.02em; 
 }
 
+/* 工具類 */
 .min-h-0 { min-height: 0; }
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.hover-white:hover { color: #fff !important; }
+
+/* =========================================
+   2. 側邊欄與卡片 (Sidebar & Cards)
+   ========================================= */
 .bg-sidebar { background-color: var(--sidebar-dark); }
+
 .glass-card {
     background: rgba(255, 255, 255, 0.03);
     backdrop-filter: blur(20px);
@@ -21,7 +34,7 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
-/* --- 視覺特效：Logo 與 時間 --- */
+/* Logo 特效 */
 .brand-title {
     font-size: 1.8rem;
     font-weight: 900;
@@ -34,6 +47,7 @@ body {
     line-height: 1.2;
 }
 
+/* 時間卡片特效 */
 .time-card-glow {
     border: 1px solid rgba(187, 134, 252, 0.3) !important;
     box-shadow: 0 0 15px rgba(187, 134, 252, 0.15), inset 0 0 20px rgba(187, 134, 252, 0.05);
@@ -43,7 +57,6 @@ body {
     box-shadow: 0 0 25px rgba(187, 134, 252, 0.25), inset 0 0 10px rgba(187, 134, 252, 0.1);
     border-color: rgba(187, 134, 252, 0.5) !important;
 }
-
 .time-digits {
     background: linear-gradient(180deg, #fff, #e0cffc);
     -webkit-background-clip: text;
@@ -52,7 +65,9 @@ body {
     text-shadow: 0 0 15px rgba(187, 134, 252, 0.6);
 }
 
-/* --- 任務列表樣式 --- */
+/* =========================================
+   3. 任務列表元件 (Task List)
+   ========================================= */
 .custom-input {
     background-color: var(--input-bg) !important;
     border: none !important;
@@ -100,7 +115,9 @@ body {
 }
 .btn-delete-task:hover { color: #d32f2f; }
 
-/* --- 計時器響應式樣式 --- */
+/* =========================================
+   4. 計時器與動畫 (Timer & Animation)
+   ========================================= */
 .timer-display-container {
     position: relative; container-type: size; 
     width: 32vh; height: 32vh;
@@ -124,19 +141,12 @@ body {
     display: flex; flex-direction: column; align-items: center;
 }
 
-/* --- 進度條與圖表 --- */
-.chart-container-wrapper { position: absolute; top: 0; left: 0; right: 0; bottom: 0; padding: 12px; }
-canvas { width: 100% !important; height: 100% !important; }
-
-.progress-bar-container {
-    height: 12px; background-color: rgba(255,255,255,0.1); border-radius: 6px; overflow: hidden;
+.cycle-dot {
+    width: 8px; height: 8px; background-color: rgba(255,255,255,0.2); border-radius: 50%; transition: all 0.3s;
 }
-.custom-progress-bar {
-    height: 100%; background: linear-gradient(90deg, var(--secondary-teal), #00a896);
-    box-shadow: 0 0 10px rgba(3, 218, 198, 0.5); transition: width 1s linear; 
-}
+.cycle-dot.active { background: var(--secondary-teal); box-shadow: 0 0 8px var(--secondary-teal); }
 
-/* --- 背景與其他 --- */
+/* 背景動畫 */
 .glow-sphere-1 {
     position: absolute; top: -10%; right: -5%; width: 50vw; height: 50vw;
     background: radial-gradient(circle, var(--primary-purple) 0%, transparent 60%);
@@ -147,11 +157,17 @@ canvas { width: 100% !important; height: 100% !important; }
     background: radial-gradient(circle, var(--secondary-teal) 0%, transparent 60%);
     opacity: 0.06; pointer-events: none; z-index: 0;
 }
-.cycle-dot {
-    width: 8px; height: 8px; background-color: rgba(255,255,255,0.2); border-radius: 50%; transition: all 0.3s;
+
+/* =========================================
+   5. 圖表與進度條 (Charts & Progress)
+   ========================================= */
+.chart-container-wrapper { position: absolute; top: 0; left: 0; right: 0; bottom: 0; padding: 12px; }
+canvas { width: 100% !important; height: 100% !important; }
+
+.progress-bar-container {
+    height: 12px; background-color: rgba(255,255,255,0.1); border-radius: 6px; overflow: hidden;
 }
-.cycle-dot.active { background: var(--secondary-teal); box-shadow: 0 0 8px var(--secondary-teal); }
-.custom-scrollbar::-webkit-scrollbar { width: 4px; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.hover-white:hover { color: #fff !important; }
+.custom-progress-bar {
+    height: 100%; background: linear-gradient(90deg, var(--secondary-teal), #00a896);
+    box-shadow: 0 0 10px rgba(3, 218, 198, 0.5); transition: width 1s linear; 
+}
