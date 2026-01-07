@@ -176,23 +176,6 @@ canvas { width: 100% !important; height: 100% !important; }
    6. 手機版 RWD 優化 (Mobile Optimization)
    ========================================= */
 
-/* 電腦版：鎖定捲動，打造戰情室感 */
-/* 電腦版：鎖定捲動，打造戰情室感 */
-@media (min-width: 992px) {
-    body { 
-        overflow: hidden; 
-    }
-
-    /* ★★★ 關鍵修正：電腦版強制鎖定高度，修復版面跑版問題 ★★★ */
-    #app {
-        height: 100vh !important; /* 強制高度為視窗大小 */
-        min-height: 0 !important; /* 覆蓋掉 HTML 的 min-vh-100 */
-    }
-
-    .mobile-main-height { height: 100%; }
-    .mobile-sidebar-height { height: 100%; }
-}
-
 /* 手機版：允許捲動，調整高度 */
 @media (max-width: 991.98px) {
     body {
@@ -207,11 +190,23 @@ canvas { width: 100% !important; height: 100% !important; }
         border-top: 1px solid rgba(255,255,255,0.1);
         border-right: none !important;
     }
-    /* 放大計時器，讓手機好點 */
     .timer-display-container {
         width: 60vw; height: 60vw;
     }
     .brand-title {
         font-size: 1.5rem;
     }
+}
+
+/* ★★★ 關鍵修正：電腦版強制鎖定高度，修復版面跑版問題 ★★★ */
+@media (min-width: 992px) {
+    body { 
+        overflow: hidden; 
+    }
+    #app {
+        height: 100vh !important; /* 強制高度為視窗大小 */
+        min-height: 0 !important; /* 覆蓋掉 HTML 的 min-vh-100 */
+    }
+    .mobile-main-height { height: 100%; }
+    .mobile-sidebar-height { height: 100%; }
 }
