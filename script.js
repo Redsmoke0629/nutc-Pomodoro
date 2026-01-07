@@ -46,22 +46,16 @@ createApp({
         };
         const dailySessions = ref(loadDailySessions());
 
-        // --- 3. [核心修改] 今日總進度計算 (即時動態版) ---
+        // 計算今日總進度 (包含進行中)
         const todayTotalMinutes = computed(() => {
-            // A. 計算已完成的任務總和
             let total = dailySessions.value.reduce((sum, s) => sum + s.duration, 0);
-
-            // B. 如果現在正在專注模式且計時器在跑，把經過的時間也加進去
             if (isRunning.value && currentMode.value === 'focus') {
                 const elapsedSeconds = TIMES.FOCUS - timeLeft.value;
                 const elapsedMinutes = elapsedSeconds / 60;
                 total += elapsedMinutes;
             }
-
-            return total; // 回傳浮點數以利進度條滑順移動，顯示時再取整數
+            return total;
         });
-
-        // 顯示用的整數分鐘 (無條件捨去或四捨五入皆可)
         const displayTotalMinutes = computed(() => Math.floor(todayTotalMinutes.value));
 
         const recordFocusSession = (minutes) => {
@@ -88,61 +82,7 @@ createApp({
             }
         };
 
-        // --- 4. Chart.js (Weekly) ---
-        let weeklyChart = null;
-
-        const getLast7Days = () => {
-            const days = [];
-            for (let i = 6; i >= 0; i--) {
-                const d = new Date(); d.setDate(d.getDate() - i);
-                days.push(`${d.getMonth()+1}/${d.getDate()}`);
-            }
-            return days;
-        };
-        
-        const getWeeklyData = () => {
-            const data = [];
-            for (let i = 6; i >= 0; i--) {
-                const d = new Date(); d.setDate(d.getDate() - i);
-                const key = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
-                data.push(weeklyHistory.value[key] || 0);
-            }
-            return data;
-        };
-
-        const renderCharts = () => {
-            if (weeklyChart) { weeklyChart.destroy(); weeklyChart = null; }
-
-            const purple = '#bb86fc'; 
-            const gridColor = 'rgba(255,255,255,0.05)'; 
-            const textColor = '#888';
-            
-            const ctx1 = document.getElementById('weeklyChart');
-            if (ctx1) {
-                weeklyChart = new Chart(ctx1, {
-                    type: 'bar',
-                    data: { labels: getLast7Days(), datasets: [{ label: '分鐘', data: getWeeklyData(), backgroundColor: purple, borderRadius: 4 }] },
-                    options: {
-                        responsive: true, maintainAspectRatio: false,
-                        scales: { 
-                            y: { 
-                                beginAtZero: true, 
-                                grid: { color: gridColor }, 
-                                ticks: { 
-                                    color: textColor,
-                                    stepSize: 60, 
-                                    callback: function(value) { return (value / 60) + 'h'; } 
-                                } 
-                            }, 
-                            x: { grid: { display: false }, ticks: { color: textColor } } 
-                        }, 
-                        plugins: { legend: { display: false } } 
-                    }
-                });
-            }
-        };
-
-        // --- 5. 任務 ---
+        // --- 3. 任務 (勾選與刪除) ---
         const newTaskInput = ref('');
         const loadTasks = () => { try { return JSON.parse(localStorage.getItem('focus_tasks') || '[]'); } catch(e){ return []; } };
         const tasks = ref(loadTasks());
@@ -164,7 +104,7 @@ createApp({
 
         const removeTask = (id) => { tasks.value = tasks.value.filter(t => t.id !== id); saveTasks(); };
 
-        // --- 6. 計時器 ---
+        // --- 4. 計時器 ---
         const modeText = computed(() => {
             if (currentMode.value === 'focus') return '深度專注';
             if (currentMode.value === 'short-break') return '短暫休息';
@@ -231,26 +171,62 @@ createApp({
             }
         };
 
-        // --- 7. WebSocket ---
-        const wsMessage = ref('連線中...'); 
-        const latency = ref(0); 
-        const isWsConnected = ref(false); 
-        let ws = null;
+        // --- 5. Chart.js (Weekly) ---
+        let weeklyChart = null;
+
+        const getLast7Days = () => {
+            const days = [];
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(); d.setDate(d.getDate() - i);
+                days.push(`${d.getMonth()+1}/${d.getDate()}`);
+            }
+            return days;
+        };
+        
+        const getWeeklyData = () => {
+            const data = [];
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(); d.setDate(d.getDate() - i);
+                const key = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+                data.push(weeklyHistory.value[key] || 0);
+            }
+            return data;
+        };
+
+        const renderCharts = () => {
+            if (weeklyChart) { weeklyChart.destroy(); weeklyChart = null; }
+            const purple = '#bb86fc'; const gridColor = 'rgba(255,255,255,0.05)'; const textColor = '#888';
+            
+            const ctx1 = document.getElementById('weeklyChart');
+            if (ctx1) {
+                weeklyChart = new Chart(ctx1, {
+                    type: 'bar',
+                    data: { labels: getLast7Days(), datasets: [{ label: '分鐘', data: getWeeklyData(), backgroundColor: purple, borderRadius: 4 }] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: { 
+                            y: { 
+                                beginAtZero: true, grid: { color: gridColor }, 
+                                ticks: { color: textColor, stepSize: 60, callback: function(value) { return (value / 60) + 'h'; } } 
+                            }, 
+                            x: { grid: { display: false }, ticks: { color: textColor } } 
+                        }, 
+                        plugins: { legend: { display: false } } 
+                    }
+                });
+            }
+        };
+
+        // --- 6. WS & Init ---
+        const wsMessage = ref('連線中...'); const latency = ref(0); const isWsConnected = ref(false); let ws = null;
         let clockInterval = null;
 
         onMounted(() => {
             updateClock(); clockInterval = setInterval(updateClock, 1000);
-
             try {
                 ws = new WebSocket('wss://echo.websocket.org');
-                ws.onopen = () => { 
-                    isWsConnected.value = true; wsMessage.value = '已連線'; 
-                    setInterval(() => { if(ws.readyState===1) ws.send(Date.now()) }, 2000);
-                };
-                ws.onmessage = (e) => {
-                    const t = parseInt(e.data);
-                    if (!isNaN(t)) latency.value = Date.now() - t;
-                };
+                ws.onopen = () => { isWsConnected.value = true; wsMessage.value = '已連線'; setInterval(() => { if(ws.readyState===1) ws.send(Date.now()) }, 2000); };
+                ws.onmessage = (e) => { const t = parseInt(e.data); if(!isNaN(t)) latency.value = Date.now() - t; };
                 ws.onerror = () => { wsMessage.value = '連線失敗'; isWsConnected.value = false; };
                 ws.onclose = () => { wsMessage.value = '已離線'; isWsConnected.value = false; };
             } catch(e) { wsMessage.value = '連線錯誤'; }
@@ -258,19 +234,14 @@ createApp({
             setTimeout(renderCharts, 300);
         });
 
-        onUnmounted(() => { 
-            if(timerInterval) clearInterval(timerInterval); 
-            if(clockInterval) clearInterval(clockInterval);
-            if(ws) ws.close();
-            if(weeklyChart) weeklyChart.destroy();
-        });
+        onUnmounted(() => { if(timerInterval) clearInterval(timerInterval); if(clockInterval) clearInterval(clockInterval); if(ws) ws.close(); if(weeklyChart) weeklyChart.destroy(); });
 
         return {
             timeLeft, formatTime, isRunning, currentMode, modeText, cycleCount, toggleTimer, skipPhase,
             modeColor,
             tasks, newTaskInput, addTask, removeTask, toggleTask, 
             wsMessage, latency, isWsConnected, currentTime, currentDate, clearHistory,
-            todayTotalMinutes, displayTotalMinutes // 回傳兩個，一個給進度條(小數)，一個給文字(整數)
+            todayTotalMinutes, displayTotalMinutes
         };
     }
 }).mount('#app');

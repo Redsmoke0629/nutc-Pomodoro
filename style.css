@@ -3,7 +3,7 @@
     --secondary-teal: #03dac6;
     --bg-dark: #09090b;
     --sidebar-dark: #111113;
-    --input-bg: #1f1f22; /* 更深的輸入框背景 */
+    --input-bg: #1f1f22;
 }
 
 body {
@@ -14,17 +14,6 @@ body {
 
 .min-h-0 { min-height: 0; }
 .bg-sidebar { background-color: var(--sidebar-dark); }
-
-/* Logo 與其他共用樣式 */
-.logo-box {
-    width: 36px; height: 36px;
-    background: linear-gradient(135deg, var(--primary-purple), #7c4dff);
-    color: #000;
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 800; font-size: 1.1rem;
-    box-shadow: 0 0 15px rgba(187, 134, 252, 0.4);
-}
-
 .glass-card {
     background: rgba(255, 255, 255, 0.03);
     backdrop-filter: blur(20px);
@@ -32,7 +21,38 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
-/* --- 全新輸入框樣式 (仿照圖片) --- */
+/* --- 視覺特效：Logo 與 時間 --- */
+.brand-title {
+    font-size: 1.8rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--primary-purple), #7c4dff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 8px rgba(187, 134, 252, 0.5));
+    letter-spacing: 0.05em;
+    line-height: 1.2;
+}
+
+.time-card-glow {
+    border: 1px solid rgba(187, 134, 252, 0.3) !important;
+    box-shadow: 0 0 15px rgba(187, 134, 252, 0.15), inset 0 0 20px rgba(187, 134, 252, 0.05);
+    transition: all 0.3s ease;
+}
+.time-card-glow:hover {
+    box-shadow: 0 0 25px rgba(187, 134, 252, 0.25), inset 0 0 10px rgba(187, 134, 252, 0.1);
+    border-color: rgba(187, 134, 252, 0.5) !important;
+}
+
+.time-digits {
+    background: linear-gradient(180deg, #fff, #e0cffc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 0 15px rgba(187, 134, 252, 0.6);
+}
+
+/* --- 任務列表樣式 --- */
 .custom-input {
     background-color: var(--input-bg) !important;
     border: none !important;
@@ -40,100 +60,49 @@ body {
     color: #eee !important;
     padding: 8px 12px;
 }
-.custom-input:focus {
-    box-shadow: 0 0 0 1px var(--primary-purple) !important;
-}
+.custom-input:focus { box-shadow: 0 0 0 1px var(--primary-purple) !important; }
 .custom-input::placeholder { color: #666; }
 
-/* --- 新增按鈕樣式 (方框) --- */
 .btn-add-task {
     width: 38px; height: 38px;
-    border: 1px solid #666;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--primary-purple);
+    border: 1px solid #666; border-radius: 8px;
+    background: transparent; color: var(--primary-purple);
     display: flex; align-items: center; justify-content: center;
     transition: all 0.2s;
 }
 .btn-add-task:hover {
-    border-color: var(--primary-purple);
-    background: rgba(187, 134, 252, 0.1);
-    color: #fff;
+    border-color: var(--primary-purple); background: rgba(187, 134, 252, 0.1); color: #fff;
 }
-.btn-add-task:active { transform: scale(0.95); }
 
-/* --- 全新任務列表樣式 --- */
 .task-item {
-    border-bottom: 1px solid rgba(255,255,255,0.08); /* 分隔線 */
-    padding: 10px 0;
-    transition: background-color 0.2s;
+    border-bottom: 1px solid rgba(255,255,255,0.08); padding: 10px 0;
+    transition: background-color 0.2s; cursor: pointer;
 }
 .task-item:last-child { border-bottom: none; }
 
-/* 客製化 Checkbox */
 .custom-checkbox {
-    width: 20px; height: 20px;
-    border-radius: 4px;
-    background-color: #2a2a2d; /* 未選中時的深色底 */
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    flex-shrink: 0;
+    width: 20px; height: 20px; border-radius: 4px;
+    background-color: #2a2a2d; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; flex-shrink: 0;
 }
 .custom-checkbox i {
-    font-size: 14px;
-    color: transparent; /* 預設隱藏勾勾 */
-    transform: scale(0.5);
-    transition: all 0.2s;
+    font-size: 14px; color: transparent; transform: scale(0.5); transition: all 0.2s;
 }
+.task-done .custom-checkbox { background-color: var(--primary-purple); }
+.task-done .custom-checkbox i { color: #000; transform: scale(1); }
 
-/* 選中狀態 */
-.task-done .custom-checkbox {
-    background-color: var(--primary-purple); /* 紫色底 */
-}
-.task-done .custom-checkbox i {
-    color: #000; /* 黑色勾勾 */
-    transform: scale(1);
-}
+.task-text { color: #ccc; font-size: 0.95rem; transition: color 0.2s; }
+.task-done .task-text { text-decoration: line-through; color: #666; }
 
-/* 文字樣式 */
-.task-text {
-    color: #ccc;
-    font-size: 0.95rem;
-    transition: color 0.2s;
-}
-.task-done .task-text {
-    text-decoration: line-through;
-    color: #666; /* 刪除線變暗 */
-}
-
-/* 刪除按鈕 (X) */
 .btn-delete-task {
-    color: #444;
-    background: none;
-    border: none;
-    font-size: 1.2rem;
-    padding: 0 5px;
-    transition: color 0.2s;
+    color: #444; background: none; border: none; font-size: 1.2rem;
+    padding: 0 5px; transition: color 0.2s;
 }
 .btn-delete-task:hover { color: #d32f2f; }
 
-
-/* --- 其他元件保持不變 --- */
-.cycle-dot {
-    width: 8px; height: 8px;
-    background-color: rgba(255,255,255,0.2);
-    border-radius: 50%;
-    transition: all 0.3s;
-}
-.cycle-dot.active {
-    background-color: var(--secondary-teal);
-    box-shadow: 0 0 8px var(--secondary-teal);
-}
-
+/* --- 計時器響應式樣式 --- */
 .timer-display-container {
-    position: relative;
-    container-type: size; 
+    position: relative; container-type: size; 
     width: 32vh; height: 32vh;
     max-width: 300px; max-height: 300px;
     min-width: 200px; min-height: 200px;
@@ -154,6 +123,8 @@ body {
     transform: translate(-50%, -50%); width: 100%;
     display: flex; flex-direction: column; align-items: center;
 }
+
+/* --- 進度條與圖表 --- */
 .chart-container-wrapper { position: absolute; top: 0; left: 0; right: 0; bottom: 0; padding: 12px; }
 canvas { width: 100% !important; height: 100% !important; }
 
@@ -164,6 +135,8 @@ canvas { width: 100% !important; height: 100% !important; }
     height: 100%; background: linear-gradient(90deg, var(--secondary-teal), #00a896);
     box-shadow: 0 0 10px rgba(3, 218, 198, 0.5); transition: width 1s linear; 
 }
+
+/* --- 背景與其他 --- */
 .glow-sphere-1 {
     position: absolute; top: -10%; right: -5%; width: 50vw; height: 50vw;
     background: radial-gradient(circle, var(--primary-purple) 0%, transparent 60%);
@@ -174,6 +147,10 @@ canvas { width: 100% !important; height: 100% !important; }
     background: radial-gradient(circle, var(--secondary-teal) 0%, transparent 60%);
     opacity: 0.06; pointer-events: none; z-index: 0;
 }
+.cycle-dot {
+    width: 8px; height: 8px; background-color: rgba(255,255,255,0.2); border-radius: 50%; transition: all 0.3s;
+}
+.cycle-dot.active { background: var(--secondary-teal); box-shadow: 0 0 8px var(--secondary-teal); }
 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
