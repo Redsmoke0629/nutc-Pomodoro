@@ -177,8 +177,18 @@ canvas { width: 100% !important; height: 100% !important; }
    ========================================= */
 
 /* 電腦版：鎖定捲動，打造戰情室感 */
+/* 電腦版：鎖定捲動，打造戰情室感 */
 @media (min-width: 992px) {
-    body { overflow: hidden; }
+    body { 
+        overflow: hidden; 
+    }
+
+    /* ★★★ 關鍵修正：電腦版強制鎖定高度，修復版面跑版問題 ★★★ */
+    #app {
+        height: 100vh !important; /* 強制高度為視窗大小 */
+        min-height: 0 !important; /* 覆蓋掉 HTML 的 min-vh-100 */
+    }
+
     .mobile-main-height { height: 100%; }
     .mobile-sidebar-height { height: 100%; }
 }
