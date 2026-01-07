@@ -171,3 +171,37 @@ canvas { width: 100% !important; height: 100% !important; }
     height: 100%; background: linear-gradient(90deg, var(--secondary-teal), #00a896);
     box-shadow: 0 0 10px rgba(3, 218, 198, 0.5); transition: width 1s linear; 
 }
+
+/* =========================================
+   6. 手機版 RWD 優化 (Mobile Optimization)
+   ========================================= */
+
+/* 電腦版：鎖定捲動，打造戰情室感 */
+@media (min-width: 992px) {
+    body { overflow: hidden; }
+    .mobile-main-height { height: 100%; }
+    .mobile-sidebar-height { height: 100%; }
+}
+
+/* 手機版：允許捲動，調整高度 */
+@media (max-width: 991.98px) {
+    body {
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    .mobile-main-height {
+        min-height: 80vh; /* 計時器至少佔 80% 高度 */
+    }
+    .mobile-sidebar-height {
+        height: auto;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        border-right: none !important;
+    }
+    /* 放大計時器，讓手機好點 */
+    .timer-display-container {
+        width: 60vw; height: 60vw;
+    }
+    .brand-title {
+        font-size: 1.5rem;
+    }
+}
